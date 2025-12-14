@@ -1,4 +1,4 @@
-from src.Incidencia import Incidencia
+from Incidencia import Incidencia
 
 
 class IncidenciaBloqueo(Incidencia):

@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Monitorización Ferroviaria</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; }
+        .container { max-width: 1000px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+        
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 2px solid #f0f0f0; padding-bottom: 20px; }
+
+        .sub-box { background: #e8f4fd; padding: 15px; border-radius: 8px; display: flex; gap: 10px; align-items: center; }
+        .sub-box input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; width: 150px;}
+        .sub-box select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        .sub-box button { padding: 8px 15px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .sub-box button:hover { background: #2980b9; }
+
+        .dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+        .chart-box { text-align: center; }
+        .log-box { max-height: 500px; overflow-y: auto; border: 1px solid #eee; border-radius: 8px; padding: 10px; }
+
+        .log-item { padding: 10px; border-bottom: 1px solid #eee; font-size: 0.9em; }
+        .log-item.bloqueo { background-color: #fff5f5; border-left: 4px solid #ff6384; }
+        .log-item.voltaje { border-left: 4px solid #36a2eb; } /* Estilo para voltaje */
+
+        .notificacion { margin-top: 5px; color: #c0392b; font-weight: bold; font-size: 0.85em; }
+        .badge-bloqueo { background: #ff6384; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; }
+        .badge-voltaje { background: #36a2eb; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; }
+
+        #error-msg { color: red; display: none; margin-top: 10px; font-weight: bold;}
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <div>
+                <h1 style="margin:0">Panel de Control de Tráfico</h1>
+                <p style="margin:5px 0 0; color:#666">Sistema Inteligente de Notificaciones</p>
+            </div>
+
+            <div class="sub-box">
+                <input type="text" id="nombreInput" placeholder="Tu Nombre...">
+                <select id="interesInput">
+                    <option value="TODO">🔔 Todo</option>
+                    <option value="BLOQUEO">🛑 Solo Bloqueos</option>
+                    <option value="VOLTAJE">⚡ Solo Voltaje</option>
+                </select>
+                <button onclick="suscribirse()">Suscribirse</button>
+            </div>
+        </header>
+
+        <div id="loading" style="text-align:center">Cargando datos...</div>
+        <div id="error-msg"></div>
+
+        <div class="dashboard" id="mainContent" style="display:none;">
+            <div class="chart-box">
+                <canvas id="miGrafico"></canvas>
+                <div id="stats" style="margin-top: 20px; font-weight: bold;"></div>
+            </div>
+
+            <div class="log-box" id="logContainer">
+                </div>
+        </div>
+    </div>
+
+    <script>
+        function suscribirse() {
+            const nombre = document.getElementById('nombreInput').value;
+            const interes = document.getElementById('interesInput').value;
+
+            if(!nombre) return alert("Escribe un nombre.");
+
+            fetch('/api/suscribir', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nombre: nombre, interes: interes })
+            })
+            .then(res => res.json())
+            .then(data => {
+                alert("✅ " + data.msg);
+                document.getElementById('nombreInput').value = "";
+                cargarDatos(); // Recargar para ver cómo cambia la lista de avisados
+            })
+            .catch(err => alert("Error de conexión"));
+        }
+
+        function cargarDatos() {
+            fetch('/api/datos')
+                .then(r => r.ok ? r.json() : Promise.reject(r))
+                .then(data => {
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('mainContent').style.display = 'grid';
+                    actualizarUI(data);
+                })
+                .catch(e => {
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('error-msg').style.display = 'block';
+                    document.getElementById('error-msg').innerText = "Error de conexión con app.py";
+                });
+        }
+
+        function actualizarUI(data) {
+            let cBloqueo = 0, cVoltaje = 0;
+            const log = document.getElementById('logContainer');
+            log.innerHTML = '<h3 style="margin:0 0 10px 0; border-bottom:1px solid #ddd;">Feed de Notificaciones</h3>';
+
+            data.forEach(inc => {
+                if(inc.tipo === 'BLOQUEO') cBloqueo++;
+                if(inc.tipo === 'VOLTAJE') cVoltaje++;
+
+                // CREAMOS LA TARJETA VISUAL
+                const item = document.createElement('div');
+
+                let htmlAvisos = "";
+                // Si la incidencia tiene gente notificada, lo mostramos
+                if(inc.notificados && inc.notificados.length > 0) {
+                    htmlAvisos = `<div class="notificacion">📩 ENVIADO A: ${inc.notificados.join(', ')}</div>`;
+                } else {
+                    htmlAvisos = `<div style="color:#999; font-size:0.8em; margin-top:5px;">(Nadie suscrito a este evento)</div>`;
+                }
+
+                if(inc.tipo === 'BLOQUEO') {
+                    item.className = 'log-item bloqueo';
+                    item.innerHTML = `<div><span class="badge-bloqueo">BLOQUEO</span> <b>${inc.hora}</b></div>
+                                      <div style="margin:5px 0;">${inc.mensaje}</div>
+                                      ${htmlAvisos}`;
+                    log.append(item);
+                }
+                else if (inc.tipo === 'VOLTAJE' && cVoltaje < 20) { // Limitamos a 20 para no saturar
+                    item.className = 'log-item voltaje';
+                    item.innerHTML = `<div><span class="badge-voltaje">VOLTAJE</span> <b>${inc.hora}</b></div>
+                                      <div style="margin:5px 0;">${inc.mensaje}</div>
+                                      ${htmlAvisos}`;
+                    log.append(item);
+                }
+            });
+
+            if (typeof Chart !== 'undefined') {
+                const ctx = document.getElementById('miGrafico').getContext('2d');
+                if(window.miChart) window.miChart.destroy();
+                window.miChart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Bloqueos', 'Voltaje'],
+                        datasets: [{ data: [cBloqueo, cVoltaje], backgroundColor: ['#ff6384', '#36a2eb'] }]
+                    }
+                });
+            }
+            document.getElementById('stats').innerText = `Bloqueos: ${cBloqueo} | Voltajes: ${cVoltaje}`;
+        }
+
+        document.addEventListener('DOMContentLoaded', cargarDatos);
+    </script>
+</body>
+</html>

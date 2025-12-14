@@ -1,7 +1,5 @@
-import pandas as pd
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split  # Necesaria aqui
 from IncidenciaBloqueo import IncidenciaBloqueo
 from IncidenciaVoltaje import IncidenciaVoltaje
 
@@ -24,7 +22,6 @@ class DetectorIncidencia:
         features = ['status_ALL', 'diff_tiempo', 'max_diff_voltaje'] + self.cols_voltaje
         X = df[features].fillna(0)
 
-        # Generamos las etiquetas Y para cualquier dataframe que entre
         y = np.zeros(len(df))
         mask_voltaje = df['max_diff_voltaje'] >= 0.5
         y[mask_voltaje] = 2
@@ -33,16 +30,12 @@ class DetectorIncidencia:
 
         return X, y
 
-    # Método para entrenar y devolver los datos de TEST
     def entrenar(self, df_entrenamiento, df_test):
-        # 1. PREPARAR Y ENTRENAR (TRAIN)
         X_train, y_train = self._preparar_datos(df_entrenamiento)
         self.modelo.fit(X_train, y_train)
 
-        # 2. PREPARAR DATOS DE TEST PARA LAS MÉTRICAS
         X_test, y_test = self._preparar_datos(df_test)
 
-        # Devolvemos los datos de test al main.py para que calcule las métricas
         return X_test, y_test
 
     def detectar_incidencias(self, df_prueba):
@@ -55,12 +48,10 @@ class DetectorIncidencia:
             if pred == 0:
                 continue
 
-            fila = df_prueba.iloc[i]  # Usamos el df original (sin columnas auxiliares)
+            fila = df_prueba.iloc[i]
             hora = fila['tiempo']
             disp_id = fila['id']
 
-            # Cogemos el valor de la columna auxiliar que creamos al preparar los datos
-            # Es decir, re-generamos las diferencias de tiempo/voltaje para el informe final
             X_row = X_proc.iloc[i]
 
             if pred == 1:  # Bloqueo
