@@ -13,7 +13,7 @@ sistema = Controlador()
 print("--- SERVIDOR WEB INICIANDO ---")
 sistema.cargar_datos()
 
-generator = np.random.default_rng(42)
+generator = 42
 df_train, df_test = train_test_split(sistema.df, test_size=0.20, shuffle=False, random_state=generator)
 sistema.detector.entrenar(df_train, df_test)
 lista_incidencias_cache = sistema.detector.detectar_incidencias(df_test)
