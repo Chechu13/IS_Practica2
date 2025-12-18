@@ -1,5 +1,8 @@
 import os
+
+import numpy as np
 import pandas as pd
+from numpy.f2py.auxfuncs import throw_error
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
 
@@ -7,6 +10,8 @@ from Lectura import Lectura
 from DetectorIncidencia import DetectorIncidencia
 from IncidenciaBloqueo import IncidenciaBloqueo
 from GestorSuscripciones import GestorSuscripciones
+
+
 
 
 class Controlador:
@@ -24,7 +29,7 @@ class Controlador:
 
             self.df.loc[20000:, 'tiempo'] += pd.Timedelta(seconds=300)
         except FileNotFoundError:
-            print("Sistema ERROR: Archivo no encontrado.")
+            raise RuntimeError("Sistema ERROR: Archivo no encontrado.")
 
     def iniciar_sistema(self):
         print("--- INICIANDO SISTEMA DE CONTROL ---")
@@ -32,7 +37,7 @@ class Controlador:
 
         if self.df is None:
             return
-
+        generator = np.random.default_rng(42)
         df_train, df_test = train_test_split(self.df, test_size=0.20, shuffle=False)
 
         print("Sistema: Entrenando IA...")

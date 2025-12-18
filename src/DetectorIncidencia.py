@@ -6,7 +6,7 @@ from IncidenciaVoltaje import IncidenciaVoltaje
 
 class DetectorIncidencia:
     def __init__(self):
-        self.modelo = RandomForestClassifier(n_estimators=200, random_state=42, class_weight='balanced')
+        self.modelo = RandomForestClassifier(n_estimators=200, random_state=42, class_weight='balanced', min_samples_leaf=1, max_features="sqrt")
         self.cols_voltaje = ['voltageReceiver1_a', 'voltageReceiver2_a', 'voltageReceiver1_b', 'voltageReceiver2_b']
 
     def _preparar_datos(self, df):

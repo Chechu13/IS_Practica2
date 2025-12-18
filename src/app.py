@@ -1,3 +1,4 @@
+import numpy as np
 from flask import Flask, jsonify, render_template, request
 from sklearn.model_selection import train_test_split
 from Controlador import Controlador
@@ -12,6 +13,7 @@ sistema = Controlador()
 print("--- SERVIDOR WEB INICIANDO ---")
 sistema.cargar_datos()
 
+generator = np.random.default_rng(42)
 df_train, df_test = train_test_split(sistema.df, test_size=0.20, shuffle=False)
 sistema.detector.entrenar(df_train, df_test)
 lista_incidencias_cache = sistema.detector.detectar_incidencias(df_test)
